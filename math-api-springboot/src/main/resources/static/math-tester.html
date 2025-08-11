@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Math API — Testes Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 880px; }
+    h1 { margin-bottom: 0.25rem; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    label { display:block; margin-top: 8px; font-weight:600; }
+    input, select, button, textarea { font-size: 16px; padding: 8px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .controls { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px; overflow:auto; }
+    .hint { color:#555; font-size:14px; }
+    .ok { color: #0a7f2e; font-weight: 600; }
+    .err { color: #b91c1c; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Math API — Testes Web</h1>
+  <p class="hint">Servidor: <code>http://localhost:8080</code> | Base path: <code>/api/v1/math</code></p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="operation">Operação</label>
+        <select id="operation">
+          <option value="add">add (soma)</option>
+          <option value="subtract">subtract (subtração)</option>
+          <option value="multiply">multiply (multiplicação)</option>
+          <option value="divide">divide (divisão)</option>
+          <option value="pow">pow (exponenciação)</option>
+        </select>
+      </div>
+      <div>
+        <label for="method">Método</label>
+        <select id="method">
+          <option>GET</option>
+          <option>POST</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="a">a</label>
+        <input id="a" type="text" placeholder="ex.: 1.5" />
+      </div>
+      <div>
+        <label for="b">b</label>
+        <input id="b" type="text" placeholder="ex.: 2.25" />
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btnRun">Executar</button>
+      <button id="btnExamples" type="button">Preencher exemplos</button>
+      <span id="status"></span>
+    </div>
+
+    <h3>Request</h3>
+    <pre id="req"></pre>
+
+    <h3>Response</h3>
+    <pre id="res"></pre>
+  </div>
+
+  <p class="hint">
+    Dica: aceita vírgula <code>1,23</code> ou ponto <code>1.23</code> — a página converte para ponto automaticamente.
+  </p>
+
+  <script>
+    const base = location.origin + "/api/v1/math";
+    const $ = (id) => document.getElementById(id);
+
+    function normalizeNumber(s) {
+      if (s == null) return s;
+      return s.trim().replace(',', '.');
+    }
+
+    async function run() {
+      const op = $("operation").value;
+      const method = $("method").value.toUpperCase();
+      const a = normalizeNumber($("a").value);
+      const b = normalizeNumber($("b").value);
+
+      const reqBox = $("req");
+      const resBox = $("res");
+      const status = $("status");
+      status.textContent = "";
+      reqBox.textContent = "";
+      resBox.textContent = "";
+
+      try {
+        let url = `${base}/${op}`;
+        let init = { method, headers: {} };
+
+        if (method === "GET") {
+          const q = new URLSearchParams({ a, b });
+          url += "?" + q.toString();
+        } else {
+          init.headers["Content-Type"] = "application/json";
+          init.body = JSON.stringify({ a, b });
+        }
+
+        reqBox.textContent = method + " " + url + (init.body ? "\n\n" + init.body : "");
+        const resp = await fetch(url, init);
+        const txt = await resp.text();
+
+        status.textContent = resp.ok ? `✔ ${resp.status} ${resp.statusText}` : `✖ ${resp.status} ${resp.statusText}`;
+        status.className = resp.ok ? "ok" : "err";
+
+        try { resBox.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
+        catch { resBox.textContent = txt; }
+      } catch (e) {
+        status.textContent = "✖ erro ao enviar requisição";
+        status.className = "err";
+        resBox.textContent = e?.stack || String(e);
+      }
+    }
+
+    function fillExamples() {
+      const op = $("operation").value;
+      if (op === "add") { $("a").value = "1.5"; $("b").value = "2.25"; $("method").value="GET"; }
+      if (op === "subtract") { $("a").value = "5"; $("b").value = "3"; $("method").value="GET"; }
+      if (op === "multiply") { $("a").value = "2"; $("b").value = "4"; $("method").value="GET"; }
+      if (op === "divide") { $("a").value = "10"; $("b").value = "3"; $("method").value="POST"; }
+      if (op === "pow") { $("a").value = "2"; $("b").value = "3"; $("method").value="GET"; }
+    }
+
+    $("btnRun").addEventListener("click", run);
+    $("btnExamples").addEventListener("click", fillExamples);
+  </script>
+</body>
+</html>
